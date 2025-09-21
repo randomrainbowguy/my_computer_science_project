@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Courier Prime', monospace;
+            background: #000;
+            color: #00d4aa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .terminal {
+            background: #111;
+            border: 2px solid #333;
+            max-width: 600px;
+            width: 100%;
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            background: #222;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #666;
+            border-bottom: 1px solid #333;
+        }
+
+        .terminal-body {
+            padding: 30px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .prompt-line { margin-bottom: 8px; font-size: 14px; }
+        .user { color: #00d4aa; }
+        .host { color: #ff6b6b; }
+        .path { color: #4ecdc4; }
+        .command { color: #fff; }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .prompt { color: #00d4aa; margin-right: 8px; font-size: 14px; }
+
+        .password-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            outline: none;
+            flex: 1;
+            caret-color: #00d4aa;
+        }
+
+        .password-input::placeholder { color: #666; }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #00d4aa;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+        .status { font-size: 14px; margin-top: 10px; min-height: 16px; }
+        .error { color: #ff6b6b; }
+        .success { color: #95e1d3; }
+
+        .help-text { color: #666; font-size: 12px; margin-top: 20px; line-height: 1.4; }
+
+        .typing { overflow: hidden; white-space: nowrap; animation: typing 2s steps(40, end); }
+        @keyframes typing { from { width: 0; } to { width: 100%; } }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            user@system:~/access$ 
+        </div>
+        <div class="terminal-body">
+            <div class="prompt-line">
+                <span class="user">user</span><span style="color:#666">@</span><span class="host">secure-gateway</span>:<span class="path">~</span>$ <span class="command">ls -la</span>
+            </div>
+            <div class="prompt-line" style="color: #666; margin-bottom: 15px;">
+                drwxr-xr-x 2 user user 4096 <span id="access-date"></span> access/
+            </div>
+            
+            <div class="prompt-line">
+                <span class="user">user</span><span style="color:#666">@</span><span class="host">secure-gateway</span>:<span class="path">~</span>$ <span class="command">cd access && ./authenticate</span>
+            </div>
+            <div class="prompt-line" style="color: #666; margin-bottom: 20px;">
+                Authentication required for protected resource
+            </div>
+
+            <div class="input-container">
+                <span class="prompt">Enter key: </span>
+                <input type="password" class="password-input" id="passwordInput" placeholder="" autocomplete="off">
+                <span class="cursor" id="cursor"></span>
+            </div>
+
+            <div class="status" id="statusMessage"></div>
+
+            <div class="help-text">
+                Press ENTER to authenticate<br>
+                Use CTRL+C to exit
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        async function authenticate() {
+            const password = document.getElementById('passwordInput').value;
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusMessage.textContent = '';
+            statusMessage.className = 'status';
+            
+            if (!password) {
+                statusMessage.textContent = 'bash: authentication failed - no key provided';
+                statusMessage.className = 'status error';
+                document.getElementById('passwordInput').value = '';
+                return;
+            }
+            
+            try {
+                statusMessage.textContent = 'Verifying credentials...';
+                statusMessage.className = 'status';
+
+                const response = await fetch(`${API_BASE}/auth/access`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    statusMessage.textContent = 'Authentication successful. Launching secure session...';
+                    statusMessage.className = 'status success';
+                    
+                    // Store session for later use
+                    sessionStorage.setItem('atlasSession', data.sessionId);
+                    sessionStorage.setItem('atlasService', data.service);
+                    
+                    setTimeout(() => {
+                        if (data.service === 'proxy') {
+                            openProxySession(data.sessionId);
+                        } else if (data.service === 'chat') {
+                            openChatSession(data.sessionId);
+                        }
+                    }, 1200);
+                } else {
+                    statusMessage.textContent = 'bash: authentication failed - invalid key';
+                    statusMessage.className = 'status error';
+                    document.getElementById('passwordInput').value = '';
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                statusMessage.textContent = 'bash: connection error - server unavailable';
+                statusMessage.className = 'status error';
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+
+        async function openProxySession(sessionId) {
+            console.log('Opening proxy session with ID:', sessionId);
+            
+            try {
+                const response = await fetch(`${API_BASE}/proxy-url`, {
+                    method: 'GET',
+                    headers: { 
+                        'X-Session-ID': sessionId,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Proxy URL response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Proxy URL error:', errorData);
+                    alert('Failed to get proxy URL: ' + errorData.error);
+                    return;
+                }
+                
+                const data = await response.json();
+                console.log('Proxy URL data:', data);
+                
+                if (data.url) {
+                    console.log('Opening proxy window with URL:', data.url);
+                    
+                    // Try to open the window
+                    const win = window.open('', '_blank');
+                    
+                    if (!win) {
+                        alert('Pop-up blocked! Please allow pop-ups for this site.');
+                        return;
+                    }
+                    
+                    const iframe = win.document.createElement('iframe');
+                    iframe.style.width = "100%";
+                    iframe.style.height = "100%";
+                    iframe.style.border = "none";
+                    iframe.src = data.url;
+                    win.document.body.style.margin = "0";
+                    win.document.body.style.padding = "0";
+                    win.document.body.appendChild(iframe);
+                    
+                    console.log('Proxy window created successfully');
+                } else {
+                    console.error('No URL in response:', data);
+                    alert('No proxy URL received from server');
+                }
+            } catch (error) {
+                console.error('Failed to load proxy:', error);
+                alert('Connection error: ' + error.message);
+            }
+        }
+
+        function openChatSession(sessionId) {
+            console.log('Opening chat session with ID:', sessionId);
+            
+            const win = window.open('', '_blank');
+            
+            if (!win) {
+                alert('Pop-up blocked! Please allow pop-ups for this site.');
+                return;
+            }
+            
+            // Create iframe in the about:blank window (same as proxy method)
+            const iframe = win.document.createElement('iframe');
+            iframe.style.width = "100%";
+            iframe.style.height = "100%";
+            iframe.style.border = "none";
+            iframe.src = window.location.origin + '/chat.html';
+            win.document.body.style.margin = "0";
+            win.document.body.style.padding = "0";
+            win.document.body.appendChild(iframe);
+            
+            console.log('Chat window created successfully');
+        }
+
+        function formatAccessDate(d) {
+            const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            const month = months[d.getMonth()];
+            const day = String(d.getDate()).padStart(2, " ");
+            const hours = String(d.getHours()).padStart(2, "0");
+            const mins = String(d.getMinutes()).padStart(2, "0");
+            return `${month} ${day} ${hours}:${mins}`;
+        }
+
+        window.addEventListener('load', () => {
+            const input = document.getElementById('passwordInput');
+            const cursor = document.getElementById('cursor');
+            const accessDateEl = document.getElementById('access-date');
+
+            accessDateEl.textContent = formatAccessDate(new Date());
+
+            input.focus();
+            input.addEventListener('focus', () => { cursor.style.display = 'none'; });
+            input.addEventListener('blur',  () => { cursor.style.display = 'inline-block'; });
+            input.addEventListener('keypress', function(e) { 
+                if (e.key === 'Enter') {
+                    authenticate(); 
+                }
+            });
+
+            document.addEventListener("keydown", (e) => {
+                if (e.ctrlKey && e.key.toLowerCase() === "c") {
+                    e.preventDefault();
+                    document.body.innerHTML = `
+                        <div style="color:#ff6b6b; font-family:monospace; 
+                                    display:flex; justify-content:center; 
+                                    align-items:center; height:100vh; background:black; font-size:20px;">
+                            system terminated
+                        </div>`;
+                    setTimeout(() => {
+                        window.close();
+                    }, 1000);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Chat</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier Prime', monospace;
+            background: #000;
+            color: #00d4aa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .terminal {
+            background: #111;
+            border: 2px solid #333;
+            max-width: 800px;
+            width: 100%;
+            height: 80vh;
+            border-radius: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            background: #222;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #666;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        .username-screen {
+            padding: 40px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .username-screen h2 {
+            color: #00d4aa;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .username-screen .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .username-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .prompt-text {
+            color: #00d4aa;
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .username-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            outline: none;
+            min-width: 200px;
+            caret-color: #00d4aa;
+        }
+
+        .username-input::placeholder {
+            color: #666;
+        }
+
+        .terminal-button {
+            background: transparent;
+            border: 1px solid #333;
+            color: #00d4aa;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .terminal-button:hover {
+            background: #222;
+            border-color: #00d4aa;
+        }
+
+        .chat-screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            flex: 1;
+        }
+
+        .chat-status {
+            background: #1a1a1a;
+            color: #666;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        .username-display {
+            background: #1a1a1a;
+            color: #4ecdc4;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #111;
+            min-height: 0;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.sent {
+            color: #95e1d3;
+        }
+
+        .message.received {
+            color: #fff;
+        }
+
+        .message.system {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            margin: 8px 0;
+        }
+
+        .message-info {
+            font-size: 11px;
+            color: #555;
+            margin-top: 2px;
+        }
+
+        .delete-button {
+            background: transparent;
+            color: #ff6b6b;
+            border: none;
+            cursor: pointer;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            margin-left: 8px;
+            padding: 0 4px;
+            opacity: 0.7;
+        }
+
+        .delete-button:hover {
+            opacity: 1;
+            background: #ff6b6b;
+            color: #000;
+        }
+
+        .chat-input-container {
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .chat-prompt {
+            color: #00d4aa;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .chat-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            outline: none;
+            flex: 1;
+            caret-color: #00d4aa;
+            min-width: 0;
+        }
+
+        .chat-input::placeholder {
+            color: #666;
+        }
+
+        .send-button {
+            background: transparent;
+            border: 1px solid #333;
+            color: #00d4aa;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .send-button:hover {
+            background: #222;
+            border-color: #00d4aa;
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .admin-badge {
+            color: #95e1d3;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .admin-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            color: #ff6b6b;
+            border: 1px solid #333;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            padding: 8px 12px;
+            cursor: pointer;
+            z-index: 999;
+            display: none;
+        }
+
+        .admin-toggle:hover {
+            background: #222;
+            border-color: #ff6b6b;
+        }
+
+        .admin-panel {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: #111;
+            border: 1px solid #333;
+            padding: 15px;
+            z-index: 1000;
+            display: none;
+            min-width: 200px;
+        }
+
+        .admin-panel h4 {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .admin-panel input {
+            background: transparent;
+            border: 1px solid #333;
+            color: #fff;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            width: 100%;
+            margin-bottom: 8px;
+            caret-color: #00d4aa;
+        }
+
+        .admin-panel input::placeholder {
+            color: #666;
+        }
+
+        .admin-panel button {
+            background: transparent;
+            border: 1px solid #333;
+            color: #ff6b6b;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 4px;
+        }
+
+        .admin-panel button:hover {
+            background: #222;
+        }
+
+        /* Scrollbar styling for terminal look */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #333;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        @media (max-width: 600px) {
+            .terminal {
+                height: 90vh;
+                margin: 10px;
+                max-width: none;
+            }
+            
+            .chat-input-container {
+                padding: 8px;
+            }
+            
+            .admin-toggle, .admin-panel {
+                position: absolute;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            user@atlas-server:~/chat$
+        </div>
+        
+        <div id="usernameScreen" class="username-screen">
+            <h2>TERMINAL CHAT ACCESS</h2>
+            <div class="subtitle">Authentication required</div>
+            
+            <div class="username-form">
+                <div class="input-container">
+                    <span class="prompt-text">username:</span>
+                    <input type="text" class="username-input" id="usernameInput" placeholder="enter_username" maxlength="20" onkeypress="handleUsernameKeyPress(event)" />
+                </div>
+                <button class="terminal-button" onclick="joinChat()">AUTHENTICATE</button>
+                <div id="error" class="error"></div>
+            </div>
+        </div>
+
+        <div id="chatScreen" class="chat-screen">
+            <div class="chat-status">
+                ● CONNECTION ESTABLISHED
+            </div>
+            <div id="usernameDisplay" class="username-display"></div>
+            <div id="messages" class="chat-messages">
+                <div class="loading">Loading chat history...</div>
+            </div>
+            <div class="chat-input-container">
+                <span class="chat-prompt">></span>
+                <input type="text" class="chat-input" id="messageInput" placeholder="type_message" onkeypress="handleKeyPress(event)" />
+                <button class="send-button" onclick="sendMessage()" id="sendButton">SEND</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <button id="adminToggle" class="admin-toggle" onclick="toggleAdminPanel()">ADMIN</button>
+    <div id="adminPanel" class="admin-panel">
+        <h4>ADMIN ACCESS</h4>
+        <input type="password" id="adminPassword" placeholder="enter_key" onkeypress="handleAdminKeyPress(event)" />
+        <button onclick="adminLogin()">LOGIN</button>
+        <br>
+        <button onclick="adminLogout()" style="display: none;" id="adminLogoutBtn">LOGOUT</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getAuth, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+        import { getDatabase, ref, push, onValue, serverTimestamp, remove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+
+        const API_BASE = window.location.origin + '/api';
+        let currentUser = '';
+        let isAdmin = false;
+        let apiToken = '';
+        let db;
+
+        // Initialize Firebase (minimal config - no secrets exposed)
+        const firebaseConfig = {
+            databaseURL: "https://my-chat-app-9a85b-default-rtdb.firebaseio.com",
+            projectId: "my-chat-app-9a85b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Check if user has valid chat session
+        window.addEventListener('load', () => {
+            const sessionId = sessionStorage.getItem('atlasSession');
+            const service = sessionStorage.getItem('atlasService');
+            
+            if (!sessionId || service !== 'chat') {
+                // Redirect to login if no valid session
+                window.location.href = '/';
+                return;
+            }
+
+            const savedUsername = localStorage.getItem('chatUsername');
+            if (savedUsername) {
+                document.getElementById('usernameInput').value = savedUsername;
+            }
+            document.getElementById('usernameInput').focus();
+        });
+
+        window.joinChat = async function() {
+            const usernameInput = document.getElementById('usernameInput');
+            const username = usernameInput.value.trim();
+            
+            if (!username) {
+                showError('error: username required');
+                return;
+            }
+
+            if (username.length < 2) {
+                showError('error: username too short (min 2 chars)');
+                return;
+            }
+
+            const sessionId = sessionStorage.getItem('atlasSession');
+            
+            try {
+                // Authenticate with backend to get Firebase token
+                const response = await fetch(`${API_BASE}/auth/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, sessionId })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError('error: authentication failed - ' + data.error);
+                    return;
+                }
+
+                // Sign in to Firebase with custom token
+                await signInWithCustomToken(auth, data.firebaseToken);
+                
+                currentUser = username;
+                apiToken = data.apiToken;
+                localStorage.setItem('chatUsername', username);
+
+                // Initialize database connection
+                db = getDatabase(app);
+                const messagesRef = ref(db, 'messages');
+                
+                onValue(messagesRef, (snapshot) => {
+                    displayMessages(snapshot.val());
+                }, (error) => {
+                    showError('error: connection failed - ' + error.message);
+                    return;
+                });
+
+                // Switch to chat screen
+                document.getElementById('usernameScreen').style.display = 'none';
+                document.getElementById('chatScreen').style.display = 'flex';
+                document.getElementById('usernameDisplay').textContent = `logged_in_as: ${username}`;
+                
+                // Show admin button
+                document.getElementById('adminToggle').style.display = 'block';
+                
+                // Focus on message input
+                document.getElementById('messageInput').focus();
+                
+                // Send welcome message
+                setTimeout(() => {
+                    const messagesRef = ref(db, 'messages');
+                    push(messagesRef, {
+                        text: `${username} connected to chat`,
+                        username: 'SYSTEM',
+                        timestamp: serverTimestamp(),
+                        isSystem: true
+                    });
+                }, 500);
+                
+            } catch (error) {
+                showError('error: connection failed - ' + error.message);
+            }
+        };
+
+        window.sendMessage = function() {
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const messageText = messageInput.value.trim();
+            
+            if (!messageText || !db) return;
+
+            sendButton.disabled = true;
+            sendButton.textContent = 'SENDING...';
+
+            try {
+                const messagesRef = ref(db, 'messages');
+                push(messagesRef, {
+                    text: messageText,
+                    username: currentUser,
+                    timestamp: serverTimestamp()
+                });
+
+                messageInput.value = '';
+            } catch (error) {
+                showError('error: message send failed - ' + error.message);
+            } finally {
+                setTimeout(() => {
+                    sendButton.disabled = false;
+                    sendButton.textContent = 'SEND';
+                }, 300);
+            }
+        };
+
+        window.handleKeyPress = function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        };
+
+        window.handleUsernameKeyPress = function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                joinChat();
+            }
+        };
+
+        window.toggleAdminPanel = function() {
+            const panel = document.getElementById('adminPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        };
+
+        window.adminLogin = async function() {
+            const password = document.getElementById('adminPassword').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/admin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, username: currentUser })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    isAdmin = true;
+                    apiToken = data.token;
+                    document.getElementById('adminPassword').value = '';
+                    document.getElementById('adminPanel').style.display = 'none';
+                    document.getElementById('adminLogoutBtn').style.display = 'block';
+                    
+                    // Update display to show admin status
+                    const currentDisplay = document.getElementById('usernameDisplay').textContent;
+                    document.getElementById('usernameDisplay').innerHTML = currentDisplay + ' <span class="admin-badge">[ADMIN]</span>';
+                    
+                    // Refresh messages to show delete buttons
+                    const messagesRef = ref(db, 'messages');
+                    onValue(messagesRef, (snapshot) => {
+                        displayMessages(snapshot.val());
+                    }, { once: true });
+                    
+                    console.log('admin access granted');
+                } else {
+                    showError('error: invalid admin key');
+                    document.getElementById('adminPassword').value = '';
+                }
+            } catch (error) {
+                showError('error: admin login failed');
+            }
+        };
+
+        window.adminLogout = function() {
+            isAdmin = false;
+            document.getElementById('adminLogoutBtn').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'none';
+            
+            // Remove admin badge
+            const display = document.getElementById('usernameDisplay');
+            display.innerHTML = display.textContent.replace(' [ADMIN]', '');
+            
+            // Refresh messages to hide delete buttons
+            const messagesRef = ref(db, 'messages');
+            onValue(messagesRef, (snapshot) => {
+                displayMessages(snapshot.val());
+            }, { once: true });
+        };
+
+        window.handleAdminKeyPress = function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                adminLogin();
+            }
+        };
+
+        window.deleteMessage = async function(messageId) {
+            if (!isAdmin) {
+                alert('error: admin access required');
+                return;
+            }
+
+            if (confirm('delete this message? [y/n]')) {
+                try {
+                    const response = await fetch(`${API_BASE}/messages/${messageId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${apiToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Delete failed');
+                    }
+                } catch (error) {
+                    showError('error: deletion failed - ' + error.message);
+                }
+            }
+        };
+
+        function displayMessages(messages) {
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = '';
+
+            if (!messages) {
+                messagesContainer.innerHTML = '<div class="loading">no messages in chat history</div>';
+                return;
+            }
+
+            // Convert messages object to array with IDs
+            const messagesList = Object.entries(messages)
+                .map(([id, message]) => ({...message, id}))
+                .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+            messagesList.forEach(message => {
+                const messageDiv = document.createElement('div');
+                
+                if (message.isSystem) {
+                    messageDiv.className = 'message system';
+                    
+                    const deleteButton = isAdmin ? 
+                        `<button class="delete-button" onclick="deleteMessage('${message.id}')" title="delete">[x]</button>` : 
+                        '';
+                    
+                    messageDiv.innerHTML = `${message.text}${deleteButton}`;
+                } else {
+                    messageDiv.className = `message ${message.username === currentUser ? 'sent' : 'received'}`;
+                    
+                    const time = message.timestamp ? 
+                        new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
+                        'now';
+
+                    const deleteButton = isAdmin ? 
+                        `<button class="delete-button" onclick="deleteMessage('${message.id}')" title="delete">[x]</button>` : 
+                        '';
+                    
+                    messageDiv.innerHTML = `
+                        <div>${message.text}${deleteButton}</div>
+                        <div class="message-info">${message.username} @ ${time}</div>
+                    `;
+                }
+                
+                messagesContainer.appendChild(messageDiv);
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            setTimeout(() => {
+                document.getElementById('error').textContent = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
